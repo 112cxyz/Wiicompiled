@@ -28,7 +28,7 @@ internal static class UninstallService
     {
         installDirectory = Path.GetFullPath(installDirectory);
         Thread.Sleep(750);
-        TryCleanup("remove shortcuts", quiet, ShellIntegration.RemoveAllShortcuts);
+        TryCleanup("remove shortcuts", quiet, ShellIntegration.RemoveShortcuts);
 
         // A portable installation never registered an uninstall entry, and the single machine-wide
         // key may belong to a normal installation on the same account. Removing it here would

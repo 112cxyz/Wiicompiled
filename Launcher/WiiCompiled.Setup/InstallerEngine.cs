@@ -291,6 +291,7 @@ internal sealed class InstallerEngine
             Path.Combine(installDirectory, InstalledLayout.InstallStateFileName)));
 
         cancellationToken.ThrowIfCancellationRequested();
+        RunningProductGuard.EnsureProductsNotRunning(installDirectory);
         _reporter.Progress(InstallStages.Publish, "Publishing the completed installation...", progressPercent);
         var configPath = RuntimeConfiguration.ResolveConfigPath(installDirectory);
         var configSnapshot = RuntimeConfiguration.Capture(configPath);
@@ -318,11 +319,11 @@ internal sealed class InstallerEngine
             try
             {
                 ShellIntegration.RegisterUninstaller(installDirectory, state.RetroRewindInstalled);
-                ShellIntegration.RemoveAllShortcuts();
+                ShellIntegration.CreateShortcuts(installDirectory);
             }
             catch (Exception ex)
             {
-                _reporter.Diagnostic("The installation succeeded, but Windows uninstall registration failed: " +
+                _reporter.Diagnostic("The installation succeeded, but Windows shell integration failed: " +
                                      ex.Message);
             }
         }

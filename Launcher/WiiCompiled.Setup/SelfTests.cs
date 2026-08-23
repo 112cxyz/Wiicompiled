@@ -59,6 +59,7 @@ internal static class SelfTests
         Test("Portable relative path settings", TestPortableRelativePathSettings, failures);
         Test("Portable move healing", TestPortableMoveHealing, failures);
         Test("Install transaction rollback", TestInstallTransactionRollback, failures);
+        Test("Install move transient-lock policy", TestInstallMoveTransientLockPolicy, failures);
         Test("Install scratch recovery", TestInstallScratchRecovery, failures);
         Test("Shortcut cleanup is best effort", TestShortcutCleanupIsBestEffort, failures);
         Test("Canonical Retro Rewind resolution", TestCanonicalRetroRewindResolution, failures);
@@ -434,30 +435,25 @@ internal static class SelfTests
     private static void TestShortcutCleanupIsBestEffort()
     {
         var root = Path.Combine(Path.GetTempPath(), "mkwc-shortcuts-" + Guid.NewGuid().ToString("N"));
-        var desktop = Path.Combine(root, "Desktop");
-        var startMenu = Path.Combine(root, "Start Menu", ProductInfo.Name);
         try
         {
-            Directory.CreateDirectory(desktop);
+            Directory.CreateDirectory(root);
             // File.Delete cannot delete a directory. This deterministically forces the first cleanup
             // to fail while the remaining independently guarded targets must still be attempted.
-            Directory.CreateDirectory(Path.Combine(desktop, "WiiCompiled.lnk"));
-            var secondShortcut = Path.Combine(desktop, "Retro Rewind.lnk");
+            var firstShortcut = Path.Combine(root, "first.lnk");
+            Directory.CreateDirectory(firstShortcut);
+            var secondShortcut = Path.Combine(root, "second.lnk");
             File.WriteAllText(secondShortcut, "shortcut");
-            Directory.CreateDirectory(startMenu);
-            File.WriteAllText(Path.Combine(startMenu, "WiiCompiled.lnk"), "shortcut");
 
             try
             {
-                ShellIntegration.RemoveAllShortcuts(desktop, startMenu);
+                ShellIntegration.RemoveShortcuts([firstShortcut, secondShortcut]);
                 throw new Exception("A shortcut deletion failure was not reported.");
             }
             catch (AggregateException) { }
 
             if (File.Exists(secondShortcut))
                 throw new Exception("One failed shortcut deletion prevented the next file deletion.");
-            if (Directory.Exists(startMenu))
-                throw new Exception("One failed shortcut deletion prevented Start Menu cleanup.");
         }
         finally
         {
@@ -725,6 +721,20 @@ internal static class SelfTests
         {
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
+    }
+
+    private static void TestInstallMoveTransientLockPolicy()
+    {
+        if (!InstallTransaction.IsTransientLock(new IOException("in use", unchecked((int)0x80070020))))
+            throw new Exception("A sharing violation would not be retried.");
+        if (!InstallTransaction.IsTransientLock(new IOException("locked", unchecked((int)0x80070021))))
+            throw new Exception("A lock violation would not be retried.");
+        if (!InstallTransaction.IsTransientLock(new UnauthorizedAccessException("denied")))
+            throw new Exception("A transient access-denied would not be retried.");
+        if (InstallTransaction.IsTransientLock(new IOException("disk full", unchecked((int)0x80070070))))
+            throw new Exception("A permanent I/O failure would be retried.");
+        if (InstallTransaction.IsTransientLock(new InvalidDataException("bad")))
+            throw new Exception("A non-I/O failure would be retried.");
     }
 
     private static void TestRetroWfcTransientRetryPolicy()

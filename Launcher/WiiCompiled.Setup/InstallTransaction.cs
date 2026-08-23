@@ -304,12 +304,35 @@ internal sealed class InstallTransaction : IDisposable
     private static bool ExistsAsOtherKind(string path, InstallTransactionEntryKind kind) =>
         kind == InstallTransactionEntryKind.Directory ? File.Exists(path) : Directory.Exists(path);
 
+    // Antivirus and indexers briefly hold handles inside freshly written trees; ride those out
+    // before treating a locked path as fatal.
+    private const int MoveAttempts = 10;
+    private static readonly TimeSpan MoveRetryDelay = TimeSpan.FromMilliseconds(500);
+
     private static void Move(string source, string destination, InstallTransactionEntryKind kind)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-        if (kind == InstallTransactionEntryKind.Directory) Directory.Move(source, destination);
-        else File.Move(source, destination);
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                if (kind == InstallTransactionEntryKind.Directory) Directory.Move(source, destination);
+                else File.Move(source, destination);
+                return;
+            }
+            catch (Exception ex) when (IsTransientLock(ex))
+            {
+                if (attempt == MoveAttempts)
+                    throw new IOException($"Could not replace \"{destination}\": {ex.Message} " +
+                                          "Close any program using this folder and retry the update.", ex);
+                Thread.Sleep(MoveRetryDelay);
+            }
+        }
     }
+
+    internal static bool IsTransientLock(Exception ex) =>
+        ex is IOException or UnauthorizedAccessException &&
+        (ex.HResult & 0xFFFF) is 5 or 32 or 33; // ACCESS_DENIED, SHARING_VIOLATION, LOCK_VIOLATION
 
     private static void Delete(string path, InstallTransactionEntryKind kind)
     {

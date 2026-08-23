@@ -80,6 +80,7 @@ internal sealed class ProductRepairService
         if (!_installation.HasToolkit)
             throw new InvalidOperationException(
                 "The installed recompilation toolkit is missing. Apply the current setup release before repairing products.");
+        RunningProductGuard.EnsureProductsNotRunning(_installation.Root);
         var expectedDolSha256 = options.ExpectedDolSha256;
         var expectedRelSha256 = options.ExpectedRelSha256;
         if (string.IsNullOrWhiteSpace(expectedDolSha256) != string.IsNullOrWhiteSpace(expectedRelSha256))
@@ -450,6 +451,8 @@ internal sealed class ProductRepairService
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        // The game may have been started during a long compile; publishing renames its directory.
+        RunningProductGuard.EnsureProductsNotRunning(_installation.Root);
         var configPath = RuntimeConfiguration.ResolveConfigPath(_installation.Root);
         var configSnapshot = RuntimeConfiguration.Capture(configPath);
         using var transaction = InstallTransaction.Begin(_installation.Root, _reporter, entries.ToArray());

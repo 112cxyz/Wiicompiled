@@ -4,6 +4,8 @@ namespace WiiCompiled.Setup;
 
 internal static class ShellIntegration
 {
+    private const string ShortcutFileName = "wiicompiled (base) (beta).lnk";
+
     public static void RegisterUninstaller(string installDirectory, bool retroInstalled)
     {
         using var key = Registry.CurrentUser.CreateSubKey(ProductInfo.UninstallKey, writable: true)
@@ -25,25 +27,42 @@ internal static class ShellIntegration
     public static void UnregisterUninstaller() =>
         Registry.CurrentUser.DeleteSubKeyTree(ProductInfo.UninstallKey, throwOnMissingSubKey: false);
 
-    /// <summary>Removes shortcuts left by GUI-capable releases from before Wheel Wizard owned the UI.</summary>
-    public static void RemoveAllShortcuts()
+    /// <summary>Creates the desktop and Start Menu shortcuts that launch the base game.</summary>
+    public static void CreateShortcuts(string installDirectory)
     {
-        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        var startMenuFolder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", ProductInfo.Name);
-        RemoveAllShortcuts(desktop, startMenuFolder);
+        var cli = Path.Combine(installDirectory, ProductInfo.SetupCopyName);
+        var shellType = Type.GetTypeFromProgID("WScript.Shell")
+                        ?? throw new InvalidOperationException("The Windows Script Host shell is unavailable.");
+        dynamic shell = Activator.CreateInstance(shellType)!;
+        foreach (var path in ShortcutPaths())
+        {
+            dynamic shortcut = shell.CreateShortcut(path);
+            shortcut.TargetPath = cli;
+            shortcut.Arguments = "--launch-base";
+            shortcut.WorkingDirectory = installDirectory;
+            shortcut.IconLocation = cli + ",0";
+            shortcut.Description = "Play Mario Kart Wii (base game)";
+            shortcut.Save();
+        }
     }
 
-    internal static void RemoveAllShortcuts(string desktop, string startMenuFolder)
+    public static void RemoveShortcuts() => RemoveShortcuts(ShortcutPaths());
+
+    internal static void RemoveShortcuts(IEnumerable<string> shortcutPaths)
     {
         var failures = new List<Exception>();
-        DeleteFileBestEffort(Path.Combine(desktop, "WiiCompiled.lnk"), failures);
-        DeleteFileBestEffort(Path.Combine(desktop, "Retro Rewind.lnk"), failures);
-        DeleteDirectoryBestEffort(startMenuFolder, failures);
+        foreach (var path in shortcutPaths)
+            DeleteFileBestEffort(path, failures);
 
         if (failures.Count != 0)
             throw new AggregateException("One or more WiiCompiled shortcuts could not be removed.", failures);
     }
+
+    private static string[] ShortcutPaths() =>
+    [
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), ShortcutFileName),
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", ShortcutFileName),
+    ];
 
     private static void DeleteFileBestEffort(string path, List<Exception> failures)
     {
@@ -54,18 +73,6 @@ internal static class ShellIntegration
         catch (Exception ex)
         {
             failures.Add(new IOException($"Could not delete shortcut {path}: {ex.Message}", ex));
-        }
-    }
-
-    private static void DeleteDirectoryBestEffort(string path, List<Exception> failures)
-    {
-        try
-        {
-            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
-        }
-        catch (Exception ex)
-        {
-            failures.Add(new IOException($"Could not delete shortcut folder {path}: {ex.Message}", ex));
         }
     }
 

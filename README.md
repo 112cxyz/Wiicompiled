@@ -89,6 +89,13 @@ launching. The backend itself is deliberately command-line only, Wheel Wizard is
 > [Releases](https://github.com/patchzyy/Wiicompiled/releases) page. If someone's sharing an
 > installer through Discord or some random download site, don't touch it!!
 
+## A note on related projects
+
+WiiCompiled, Wheel Wizard, Retro rewind and other related projects are developed
+**independently** and each has its **own** contribution rules and all have their own
+rules. What applies here does not automatically apply there,
+and vice versa. Check each project's own CONTRIBUTING and README files.
+
 ## Retro Rewind
 
 [Retro Rewind](https://wiki.tockdom.com/wiki/Retro_Rewind), ZPL's Mario Kart Wii mod distribution,

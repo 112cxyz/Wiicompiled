@@ -11,7 +11,7 @@ Thanks for wanting to help! A few ground rules
 
 ## Code quality
 
-We don't care how your code came into existence. What we care about is whether it meets the
+We don't care how your code came into existence. What we care about is whether it meets or improves the
 project's patterns and standards, and the only way we measure that is by
 reading it.
 

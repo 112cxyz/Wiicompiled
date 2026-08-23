@@ -162,11 +162,7 @@ internal sealed class InstallerEngine
             publishGameAssets: reusableGameAssets is null, cancellationToken);
     }
 
-    /// <summary>
-    /// Whether this operation must replace the installed <c>Toolkit</c>. The shipped translator and translation
-    /// project are one unit, so <c>samePackageContent</c> alone isn't enough: <c>sameToolkit</c> tracks the compile
-    /// identity separately, since gating on package identity alone let the two disagree after the v0.2.5 healing salt bump.
-    /// </summary>
+
     internal static bool MustRefreshToolkit(bool sameToolkit, bool samePackageContent,
         bool dolphinToolPresent) =>
         !sameToolkit || !samePackageContent || !dolphinToolPresent;

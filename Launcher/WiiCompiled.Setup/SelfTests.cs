@@ -133,11 +133,7 @@ internal static class SelfTests
         }
     }
 
-    /// <summary>
-    /// The translator and the project file it parses must never come from different releases. The
-    /// first case is the v0.2.5 regression: a compile-identity change republished the workspace
-    /// while an unchanged package identity retained the older toolkit.
-    /// </summary>
+
     private static void TestToolkitRefreshDecision()
     {
         if (!InstallerEngine.MustRefreshToolkit(sameToolkit: false, samePackageContent: true,

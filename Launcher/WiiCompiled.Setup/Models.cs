@@ -50,11 +50,6 @@ internal sealed class PayloadManifest
     public string ToolkitFingerprint { get; set; } = "";
     public string ToolkitPackageFingerprint { get; set; } = "";
     public string RuntimeAssetsFingerprint { get; set; } = "";
-
-    /// <summary>
-    /// Cache-reuse subsets of <see cref="ToolkitFingerprint"/>. Empty in a pre-0.2.0 manifest,
-    /// which every consumer treats as "changed" and therefore as a full rebuild - never as reuse.
-    /// </summary>
     public string TranslationFingerprint { get; set; } = "";
     public string NativeToolchainFingerprint { get; set; } = "";
 }
@@ -161,7 +156,6 @@ internal sealed class ToolkitState
     public string ToolkitPackageFingerprint { get; set; } = "";
     /// <summary>Identity of the runtime assets copied verbatim beside each product.</summary>
     public string RuntimeAssetsFingerprint { get; set; } = "";
-    /// <summary>Cache-reuse subsets of the compile identity; empty on a pre-0.2.0 installation.</summary>
     public string TranslationFingerprint { get; set; } = "";
     public string NativeToolchainFingerprint { get; set; } = "";
     public string ToolkitReleaseTag { get; set; } = "";

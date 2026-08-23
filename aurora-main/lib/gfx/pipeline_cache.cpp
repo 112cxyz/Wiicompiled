@@ -948,12 +948,13 @@ static std::chrono::steady_clock::time_point g_prewarmStart{};
 static uint32_t g_prewarmCount = 0;
 
 static void note_pipeline_queue_drained() {
-  // Every drained burst (boot prewarm, later first-use compiles) is a natural point to
-  // persist the monolithic Vulkan pipeline cache; Dawn skips the write when it is clean.
-  webgpu::serialize_pipeline_caches();
   if (!g_prewarmActive.exchange(false, std::memory_order_acq_rel)) {
     return;
   }
+  // Persist the monolithic Vulkan pipeline cache once after boot prewarm only; doing it on
+  // every drained burst stalls the device lock mid-race. Later first-use compiles are
+  // covered by the shutdown serialize.
+  webgpu::serialize_pipeline_caches();
   const auto elapsed =
       std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - g_prewarmStart);
   const auto stats = webgpu::blob_cache_stats();

@@ -109,6 +109,9 @@ internal static class SelfTests
             Directory.CreateDirectory(Path.Combine(staged, "runtime", "src"));
             File.WriteAllText(Path.Combine(installed, "runtime", "src", "same.cpp"), "int same();");
             File.WriteAllText(Path.Combine(staged, "runtime", "src", "same.cpp"), "int same();");
+            var installedSameStamp = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+            File.SetLastWriteTimeUtc(Path.Combine(installed, "runtime", "src", "same.cpp"),
+                installedSameStamp);
             File.WriteAllText(Path.Combine(installed, "runtime", "src", "edited.cpp"), "int old();");
             File.WriteAllText(Path.Combine(staged, "runtime", "src", "edited.cpp"), "int new_();");
             File.WriteAllText(Path.Combine(staged, "runtime", "src", "added.cpp"), "int added();");
@@ -117,8 +120,10 @@ internal static class SelfTests
 
             WorkspaceTimestamps.MarkChangedFiles(installed, staged, _ => { });
 
-            if (File.GetLastWriteTimeUtc(Path.Combine(staged, "runtime", "src", "same.cpp")).Year != 2000)
-                throw new Exception("An unchanged workspace file lost its normalized timestamp.");
+            if (File.GetLastWriteTimeUtc(Path.Combine(staged, "runtime", "src", "same.cpp")) !=
+                installedSameStamp)
+                throw new Exception("An unchanged workspace file did not inherit the installed " +
+                                    "timestamp; clang would reject the previous build's PCHs.");
             if (File.GetLastWriteTimeUtc(Path.Combine(staged, "runtime", "src", "edited.cpp")).Year == 2000)
                 throw new Exception("A changed workspace file kept its normalized timestamp; " +
                                     "Ninja would never recompile it.");

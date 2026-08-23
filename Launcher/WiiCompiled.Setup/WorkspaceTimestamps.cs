@@ -18,8 +18,12 @@ internal static class WorkspaceTimestamps
         {
             cancellationToken.ThrowIfCancellationRequested();
             var relative = Path.GetRelativePath(stagedWorkspace, stagedFile);
-            if (FileUnchanged(Path.Combine(installedWorkspace, relative), stagedFile))
+            var installedFile = Path.Combine(installedWorkspace, relative);
+            if (FileUnchanged(installedFile, stagedFile))
             {
+                // Clang validates PCH dependency mtimes by equality, so an unchanged file must
+                // keep the exact timestamp the previous build recorded, not the normalized one.
+                InheritTimestamp(installedFile, stagedFile);
                 unchanged++;
                 continue;
             }
@@ -28,6 +32,17 @@ internal static class WorkspaceTimestamps
         }
         diagnostic($"Marked {changed} changed workspace file(s) for recompilation; " +
                    $"{unchanged} unchanged file(s) keep the incremental build cache valid.");
+    }
+
+    private static void InheritTimestamp(string installedFile, string stagedFile)
+    {
+        try
+        {
+            File.SetLastWriteTimeUtc(stagedFile, File.GetLastWriteTimeUtc(installedFile));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 
     private static bool FileUnchanged(string installedFile, string stagedFile)

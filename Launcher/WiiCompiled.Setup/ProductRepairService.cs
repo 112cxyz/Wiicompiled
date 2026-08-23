@@ -233,12 +233,13 @@ internal sealed class ProductRepairService
                 retroOutput = Path.Combine(scratchRoot, "retro-output");
                 _reporter.Progress(InstallStages.BuildBase,
                     "Recompiling Mario Kart Wii and Retro Rewind with the installed toolkit...", 5);
-                await builder.BuildAsync(_installation.Root, BuildProfile.Both, retroOutput,
-                    requestedPayloadMode, payloadSnapshot?.Directory, cancellationToken,
-                    toolkitComponents, forceCleanBuild,
-                    progress: new BuildProgressWindow(_reporter, InstallStages.BuildBase, 5, 92),
-                    retroRewindPackageDirectory: compileInputs.RetroRewindRoot,
-                    baseOutputDirectory: baseOutput);
+                await BuildWithCleanRetryAsync(forceCleanBuild, clean =>
+                    builder.BuildAsync(_installation.Root, BuildProfile.Both, retroOutput,
+                        requestedPayloadMode, payloadSnapshot?.Directory, cancellationToken,
+                        toolkitComponents, clean,
+                        progress: new BuildProgressWindow(_reporter, InstallStages.BuildBase, 5, 92),
+                        retroRewindPackageDirectory: compileInputs.RetroRewindRoot,
+                        baseOutputDirectory: baseOutput));
                 LocalBuildService.WriteFingerprint(baseOutput, BuildProfile.Base, toolkitFingerprint,
                     dolSha, relSha, "", RetroWfcPayloadMode.NotApplicable);
                 LocalBuildService.WriteFingerprint(retroOutput, BuildProfile.RetroRewind,
@@ -251,10 +252,11 @@ internal sealed class ProductRepairService
                 baseOutput = Path.Combine(scratchRoot, "base-output");
                 _reporter.Progress(InstallStages.BuildBase,
                     "Recompiling Mario Kart Wii with the installed toolkit...", 5);
-                await builder.BuildAsync(_installation.Root, BuildProfile.Base, baseOutput,
-                    RetroWfcPayloadMode.NotApplicable, null, cancellationToken,
-                    toolkitComponents, forceCleanBuild,
-                    progress: new BuildProgressWindow(_reporter, InstallStages.BuildBase, 5, 92));
+                await BuildWithCleanRetryAsync(forceCleanBuild, clean =>
+                    builder.BuildAsync(_installation.Root, BuildProfile.Base, baseOutput,
+                        RetroWfcPayloadMode.NotApplicable, null, cancellationToken,
+                        toolkitComponents, clean,
+                        progress: new BuildProgressWindow(_reporter, InstallStages.BuildBase, 5, 92)));
                 LocalBuildService.WriteFingerprint(baseOutput, BuildProfile.Base, toolkitFingerprint,
                     dolSha, relSha, "", RetroWfcPayloadMode.NotApplicable);
             }
@@ -265,11 +267,12 @@ internal sealed class ProductRepairService
                 retroOutput = Path.Combine(scratchRoot, "retro-output");
                 _reporter.Progress(InstallStages.BuildRetro,
                     "Recompiling Retro Rewind for the canonical Code.pul...", 5);
-                await builder.BuildAsync(_installation.Root, BuildProfile.RetroRewind, retroOutput,
-                    requestedPayloadMode, payloadSnapshot?.Directory, cancellationToken,
-                    toolkitComponents, forceCleanBuild,
-                    progress: new BuildProgressWindow(_reporter, InstallStages.BuildRetro, 5, 92),
-                    retroRewindPackageDirectory: compileInputs.RetroRewindRoot);
+                await BuildWithCleanRetryAsync(forceCleanBuild, clean =>
+                    builder.BuildAsync(_installation.Root, BuildProfile.RetroRewind, retroOutput,
+                        requestedPayloadMode, payloadSnapshot?.Directory, cancellationToken,
+                        toolkitComponents, clean,
+                        progress: new BuildProgressWindow(_reporter, InstallStages.BuildRetro, 5, 92),
+                        retroRewindPackageDirectory: compileInputs.RetroRewindRoot));
                 LocalBuildService.WriteFingerprint(retroOutput, BuildProfile.RetroRewind,
                     toolkitFingerprint, dolSha, relSha, compileInputs.CodePulSha256,
                     requestedPayloadMode, compileInputs.CompileInputsSha256,
@@ -463,6 +466,20 @@ internal sealed class ProductRepairService
             RuntimeConfiguration.SetRetroRewindRoot(configPath, plan.CanonicalRetroRewindRoot);
         }
         transaction.Commit();
+    }
+
+    private async Task BuildWithCleanRetryAsync(bool forceCleanBuild, Func<bool, Task> build)
+    {
+        try
+        {
+            await build(forceCleanBuild);
+        }
+        catch (InvalidOperationException ex) when (!forceCleanBuild)
+        {
+            _reporter.Diagnostic(
+                $"Incremental recompilation failed ({ex.Message}); retrying with a clean build.");
+            await build(true);
+        }
     }
 
     private void EnsureSufficientRepairDiskSpace()

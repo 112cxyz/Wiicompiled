@@ -305,27 +305,27 @@ internal sealed class InstallerEngine
             RuntimeConfiguration.SetRetroRewindRoot(configPath, canonicalRetroRoot);
         transaction.Commit();
 
-        // A portable installation is owned by the folder it lives in, not by this machine. Adding a
-        // machine-wide uninstall entry for it would outlive the folder and, worse, would overwrite
-        // the entry of a normal installation on the same account.
-        if (PortableRoot.TryFind(installDirectory) is not null)
+        try
         {
-            _reporter.Diagnostic(
-                "Portable installation: no Windows uninstall entry was registered. Remove the folder, " +
-                "or run the copied setup with --uninstall, to uninstall it.");
-        }
-        else
-        {
-            try
+            // A portable installation is owned by the folder it lives in, not by this machine. Adding
+            // a machine-wide uninstall entry for it would outlive the folder and, worse, would
+            // overwrite the entry of a normal installation on the same account.
+            if (PortableRoot.TryFind(installDirectory) is not null)
+            {
+                _reporter.Diagnostic(
+                    "Portable installation: no Windows uninstall entry was registered. Remove the folder, " +
+                    "or run the copied setup with --uninstall, to uninstall it.");
+            }
+            else
             {
                 ShellIntegration.RegisterUninstaller(installDirectory, state.RetroRewindInstalled);
-                ShellIntegration.CreateShortcuts(installDirectory);
             }
-            catch (Exception ex)
-            {
-                _reporter.Diagnostic("The installation succeeded, but Windows shell integration failed: " +
-                                     ex.Message);
-            }
+            ShellIntegration.CreateShortcuts(installDirectory);
+        }
+        catch (Exception ex)
+        {
+            _reporter.Diagnostic("The installation succeeded, but Windows shell integration failed: " +
+                                 ex.Message);
         }
 
         _reporter.Progress(InstallStages.Publish, "Installation complete.", completionPercent);

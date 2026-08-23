@@ -259,6 +259,12 @@ uint32_t ExtractTvFormat(uint32_t tvMode) {
 // Re-entry guard to prevent AdvanceRetrace calling itself via OSWakeupThread -> SelectThread
 static std::atomic<bool> s_inAdvanceRetrace{false};
 
+// Set while VI_HLE_PresentFrame runs its seal/pace/pre-warm sequence. Guest callbacks
+// serviced during that window (pace-loop alarms, GX timing polls) still see the stale
+// hasValidXfb/g_auroraFrameActive flags; a retrace-context present fired from them would
+// end the freshly pre-warmed empty frame and show it as a black frame group.
+static std::atomic<bool> s_presentSequenceActive{false};
+
 void AdvanceRetrace(CpuContext* ctx, Clock::time_point retraceStamp, bool serviceAurora) {
     // Prevent re-entry - this can happen if OSWakeupThread triggers SelectThread
     // which goes idle and calls ProcessTimerEvents again
@@ -347,7 +353,7 @@ void AdvanceRetrace(CpuContext* ctx, Clock::time_point retraceStamp, bool servic
     // VISetBlack(TRUE) keeps frame submission running but shows only the clear color: GX render work is
     // skipped and Aurora's end_frame() clears to black, matching the hardware manual's "signal continues,
     // pixels go black" behavior. When not black, submission waits for hasXfbReady (GXCopyDisp done).
-    if (serviceAurora) {
+    if (serviceAurora && !s_presentSequenceActive.load(std::memory_order_acquire)) {
         const bool frameActive = g_auroraFrameActive.load(std::memory_order_acquire);
         const bool xfbMatches = (readyXfb != 0 && readyXfb == currentFb);
         const bool shouldPresentXfb = hasXfbReady && !isBlack && xfbMatches;
@@ -512,6 +518,12 @@ void PaceToRetraceBoundary(Clock::time_point deadline) {
 // producer to the VI retrace boundary, and pre-warms the next frame. Paced from GXCopyDisp; unpaced for
 // the retrace-context black/boot present path in AdvanceRetrace.
 void VI_HLE_PresentFrame(bool presentedXfb, bool paceToRetrace) {
+    if (s_presentSequenceActive.exchange(true, std::memory_order_acq_rel)) {
+        return;
+    }
+    struct SequenceGuard {
+        ~SequenceGuard() { s_presentSequenceActive.store(false, std::memory_order_release); }
+    } sequenceGuard;
     Clock::time_point paceDeadline{};
     bool paceThisFrame = false;
     if (paceToRetrace) {

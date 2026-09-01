@@ -94,7 +94,7 @@ launching. The backend itself is deliberately command-line only, Wheel Wizard is
 Requires macOS with Xcode. Build the `WiiCompiled` target for iOS arm64; the build writes
 `WiiCompiled-unsigned.ipa` next to the app bundle.
 
-```
+```sh
 cmake -S runtime -B build-ios -G Ninja -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 \
     -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=iphoneos \

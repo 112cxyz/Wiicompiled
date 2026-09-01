@@ -414,10 +414,8 @@ bool create_window(AuroraBackend backend) {
   Sint32 posX = g_config.hasWindowPosition ? g_config.windowPosX : SDL_WINDOWPOS_CENTERED;
   Sint32 posY = g_config.hasWindowPosition ? g_config.windowPosY : SDL_WINDOWPOS_CENTERED;
 #if defined(__APPLE__) && TARGET_OS_IPHONE
-  // A bare SDL_WINDOWPOS_CENTERED does not say which display it means. On iOS,
-  // where several UIScreens can be present, that leaves the window sized for one
-  // display while the surface is sized for another. Name the primary display
-  // explicitly and take its exact bounds.
+  // Without this the window falls back to the 1280x960 default on any device
+  // with no saved size.
   if (const SDL_DisplayID primary = SDL_GetPrimaryDisplay(); primary != 0) {
     SDL_Rect bounds{};
     if (SDL_GetDisplayBounds(primary, &bounds) && bounds.w > 0 && bounds.h > 0) {

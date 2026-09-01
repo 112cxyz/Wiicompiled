@@ -89,6 +89,41 @@ Wheel Wizard downloads the setup tool from this repo and walks you through insta
 launching. The backend itself is deliberately command-line only, Wheel Wizard is a wrapper around it.
 
 
+### iOS
+
+Requires macOS with Xcode. Build the `WiiCompiled` target for iOS arm64; the build writes
+`WiiCompiled-unsigned.ipa` next to the app bundle.
+
+```
+cmake -S runtime -B build-ios -G Ninja -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 \
+    -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=iphoneos \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 \
+    -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH \
+    -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+    -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+    -DCMAKE_DISABLE_FIND_PACKAGE_absl=TRUE \
+    -DAURORA_DAWN_PROVIDER=package
+cmake --build build-ios --target WiiCompiled
+```
+
+Install it with AltStore or SideStore, which sign with your own Apple ID. The app needs the
+`com.apple.developer.kernel.increased-memory-limit` entitlement or it exits at startup;
+[GetMoreRam](https://github.com/hugeBlack/GetMoreRam) grants it with a free Apple ID.
+`runtime/cmake/ios/WiiCompiled.entitlements` is a template for signing by hand, with placeholders to
+replace; the sideloaders build their own and ignore it.
+
+Copy `Config.toml` and an extracted `DATA` directory into the app's Documents folder, using Files on
+the device or the Finder with it connected. Keep `dvd_root` relative:
+
+```toml
+[paths]
+dvd_root = "DATA"
+```
+
+Touch controls appear when no gamepad is attached; tap the FPS readout for settings.
+
+
 > [!CAUTION]
 > Only take builds from this repository's
 > [Releases](https://github.com/patchzyy/Wiicompiled/releases) page. If someone's sharing an

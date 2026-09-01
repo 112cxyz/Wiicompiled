@@ -24,6 +24,7 @@ struct PngReader {
     std::FILE* file = nullptr;
     png_structp png = nullptr;
     png_infop info = nullptr;
+    std::vector<png_bytep> rows;
     ~PngReader() {
         if (png != nullptr) png_destroy_read_struct(&png, info != nullptr ? &info : nullptr, nullptr);
         if (file != nullptr) std::fclose(file);
@@ -57,11 +58,11 @@ bool DecodeRgba8(const std::filesystem::path& path, std::vector<uint8_t>& out, u
     if (width == 0 || height == 0) return false;
 
     out.assign(static_cast<size_t>(width) * height * 4u, 0);
-    std::vector<png_bytep> rows(height);
+    r.rows.resize(height);
     for (uint32_t y = 0; y < height; ++y) {
-        rows[y] = out.data() + static_cast<size_t>(y) * width * 4u;
+        r.rows[y] = out.data() + static_cast<size_t>(y) * width * 4u;
     }
-    png_read_image(r.png, rows.data());
+    png_read_image(r.png, r.rows.data());
     return true;
 }
 

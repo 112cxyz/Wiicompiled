@@ -231,6 +231,12 @@ function(mkw_configure_product target)
             $<TARGET_FILE:sqlite3> $<TARGET_FILE_DIR:${target}>)
     endif()
 
+    if(MKW_PLATFORM_IOS AND NOT CMAKE_HOST_APPLE)
+        set(shim "${MKW_RUNTIME_SOURCE_DIR}/src/platform/ios/compiler_rt_shim.c")
+        target_sources(${target} PRIVATE "${shim}")
+        set_source_files_properties("${shim}" PROPERTIES SKIP_PRECOMPILE_HEADERS ON SKIP_UNITY_BUILD_INCLUSION ON)
+    endif()
+
     if(MKW_PLATFORM_IOS)
         # CMake bundles iOS targets with its own default Info.plist, whose
         # CFBundleIdentifier is empty and which carries none of the iOS keys, so

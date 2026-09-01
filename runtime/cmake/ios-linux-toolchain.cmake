@@ -1,8 +1,9 @@
 # Cross-compile the iOS arm64 products from a Linux host.
 #
-# Needs upstream clang and lld (Debian 13: clang-19 lld-19 llvm-19), an
-# iPhoneOS SDK copied out of Xcode, and Xcode's libclang_rt.ios.a. Nothing
-# from Theos or xtool. See README.md, "iOS from Linux".
+# Needs upstream clang and lld (Debian 13: clang-19 lld-19 llvm-19) and an
+# iPhoneOS SDK, either copied out of Xcode or sparse-cloned from
+# github.com/xybp888/iOS-SDKs. Nothing from Theos or xtool. See README.md,
+# "iOS from Linux".
 #
 #   cmake -S runtime -B build-ios -G Ninja -DCMAKE_BUILD_TYPE=Release \
 #       -DCMAKE_TOOLCHAIN_FILE=cmake/ios-linux-toolchain.cmake \
@@ -10,8 +11,8 @@
 
 set(IOS_SDK "/opt/iPhoneOS.sdk" CACHE PATH "iPhoneOS SDK copied from Xcode")
 set(MKW_IOS_LLVM_BIN "/usr/lib/llvm-19/bin" CACHE PATH "Directory holding clang, ld64.lld and llvm-ar")
-set(MKW_IOS_CLANG_RT "/opt/ios-linux/lib/libclang_rt.ios.a" CACHE FILEPATH
-    "Xcode's iOS compiler-rt builtins; Apple's clang links this implicitly, upstream clang has none")
+set(MKW_IOS_CLANG_RT "" CACHE FILEPATH
+    "Optional: Xcode's libclang_rt.ios.a. Left empty, src/platform/ios/compiler_rt_shim.c covers what the runtime needs")
 list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES IOS_SDK MKW_IOS_LLVM_BIN MKW_IOS_CLANG_RT)
 
 set(CMAKE_SYSTEM_NAME iOS)
@@ -47,6 +48,7 @@ endforeach()
 set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=lld ${MKW_IOS_CLANG_RT}")
 set(CMAKE_SHARED_LINKER_FLAGS_INIT "-fuse-ld=lld ${MKW_IOS_CLANG_RT}")
 set(CMAKE_MODULE_LINKER_FLAGS_INIT "-fuse-ld=lld ${MKW_IOS_CLANG_RT}")
+string(STRIP "${CMAKE_EXE_LINKER_FLAGS_INIT}" CMAKE_EXE_LINKER_FLAGS_INIT)
 
 set(CMAKE_FIND_ROOT_PATH "${IOS_SDK}")
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)

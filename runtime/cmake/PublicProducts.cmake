@@ -375,6 +375,11 @@ endif()
 # tuning rather than leaving target-specific performance on the table.
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|amd64|x86_64|X86_64)$")
     set(MKW_BASELINE_ARCH_FLAG -march=x86-64-v3)
+elseif(MKW_PLATFORM_IOS)
+    # iOS 17 runs on the A12 and later, and the build host is never the device;
+    # -mcpu=native there would tune for whatever Mac (or Linux box) did the
+    # compile, and upstream clang rejects it when cross-compiling.
+    set(MKW_BASELINE_ARCH_FLAG -mcpu=apple-a12)
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
     set(MKW_BASELINE_ARCH_FLAG -mcpu=native)
 else()

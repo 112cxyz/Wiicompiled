@@ -5,9 +5,6 @@
 // view at kFlatGuestBase has page protections as the interception mechanism (unmapped/MMIO/
 // executable/deferred-read pages are uncommitted or protected), while the HOST view is a plain
 // alias native runtime code (image loading, DVD reads, HLE, GX) writes through unchecked.
-#if defined(__APPLE__)
-#include <TargetConditionals.h>
-#endif
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -18,7 +15,7 @@ namespace GuestFlat {
 // of a global.
 inline constexpr uint64_t kGuestSpaceSize = 0x1'0000'0000ull;
 inline constexpr size_t kGuestPageSize = 0x1000;
-#if defined(__APPLE__) && defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
+#ifdef MKW_PLATFORM_IOS
 // No fixed base works on every device: probing an iPhone 17 Pro and an iPad
 // Pro M5 gave disjoint sets of free 4 GiB windows (448 GiB only, versus 12-48
 // GiB), and the extended-virtual-addressing entitlement changes neither. So the

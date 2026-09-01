@@ -40,6 +40,11 @@ set(MKW_IOS_BUNDLE_ID_PREFIX "it.tobyfox" CACHE STRING
 # libraries and the products in cmake/PublicProducts.cmake) inherits them while
 # aurora-main and its third-party tree stay unaffected.
 set(MKW_PROJECT_COMPILE_DEFINITIONS NOMINMAX)
+if(MKW_PLATFORM_IOS)
+    # One project-wide answer to "is this iOS", so sources do not each pull in
+    # TargetConditionals.h and spell out the __APPLE__ && TARGET_OS_IPHONE dance.
+    list(APPEND MKW_PROJECT_COMPILE_DEFINITIONS MKW_PLATFORM_IOS=1)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 

@@ -1425,7 +1425,7 @@ int RuntimeMain(int argc, char** argv) {
         }
         aurora_set_frame_worker_wait_callback(ServiceGuestTimingDuringAuroraFrameWait);
         GxGuestWrite::InstallAuroraHooks();
-#if defined(__APPLE__) && TARGET_OS_IPHONE
+#ifdef MKW_PLATFORM_IOS
         // Up front, or the frame the controls appear on pays for every decode.
         TouchArt::Preload();
 #endif
@@ -1509,15 +1509,12 @@ int RuntimeMain(int argc, char** argv) {
 
 // SDL must own main() on iOS: it supplies the entry point that starts
 // UIApplicationMain and hands control back here once the app is running.
-#if defined(__APPLE__)
-#include <TargetConditionals.h>
-#if TARGET_OS_IPHONE
+#ifdef MKW_PLATFORM_IOS
 #include <SDL3/SDL_main.h>
-#endif
 #endif
 
 int main(int argc, char** argv) {
-#if TARGET_OS_IPHONE
+#ifdef MKW_PLATFORM_IOS
     // SDL's iOS backend calls SDL_main from scene:willConnectToSession:, once
     // for every scene that connects (SDL_uikitappdelegate.m, postFinishLaunch).
     // Attaching an external display makes iOS create a second scene, so this

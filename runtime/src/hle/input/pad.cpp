@@ -1,7 +1,4 @@
 #include "hle_stubs.h"
-#if defined(__APPLE__)
-#include <TargetConditionals.h>
-#endif
 #include "touch_pad.h"
 
 #include <array>
@@ -56,7 +53,7 @@ extern "C" uint32_t PAD__Read_HLE(uint32_t statusPtr)
     // TouchPad::Read makes that call itself; the err field is no proxy for it,
     // since keyboard bindings report PAD_ERR_NONE with no controller attached.
     std::array<PADStatus, PAD_CHANMAX> touchStatuses{};
-#if defined(__APPLE__) && TARGET_OS_IPHONE
+#ifdef MKW_PLATFORM_IOS
     if (!PADIsInputBlocked() && TouchPad::Read(touchStatuses)) {
         statuses[0] = touchStatuses[0];
     }

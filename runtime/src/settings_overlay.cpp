@@ -1,7 +1,4 @@
 #include "settings_overlay.h"
-#if defined(__APPLE__)
-#include <TargetConditionals.h>
-#endif
 #include "touch_pad.h"
 #include "audio_backend.h"
 #include "controller_mapping_wizard.h"
@@ -926,7 +923,7 @@ void Draw() noexcept {
     DrawFpsOverlay();
     DrawTopBar();
     controller_mapping_wizard::Draw();
-#if defined(__APPLE__) && TARGET_OS_IPHONE
+#ifdef MKW_PLATFORM_IOS
     TouchPad::Draw();
 #endif
     // The wizard captures raw presses; keep them out of the game even when the

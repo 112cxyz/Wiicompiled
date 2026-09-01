@@ -13,7 +13,6 @@
 #endif
 
 #if defined(__APPLE__)
-#include <TargetConditionals.h>
 #include <mach-o/dyld.h>
 #include <pwd.h>
 #endif
@@ -60,7 +59,7 @@ std::filesystem::path ApplicationDataDirectory(std::string_view applicationName)
         CoTaskMemFree(rawPath);
         return directory;
     }
-#elif defined(__APPLE__) && TARGET_OS_IPHONE
+#elif defined(MKW_PLATFORM_IOS)
     // The whole container is already private to this app, so user state lives
     // in Documents rather than a name-scoped Application Support subdirectory.
     // That puts Config.toml beside the game data the user copied in, which is

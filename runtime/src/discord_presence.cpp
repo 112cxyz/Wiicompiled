@@ -1,10 +1,7 @@
 #include "discord_presence.h"
 
-#if defined(__APPLE__)
-#include <TargetConditionals.h>
-#endif
 
-#if defined(__APPLE__) && TARGET_OS_IPHONE
+#ifdef MKW_PLATFORM_IOS
 
 // iOS has no Discord client for the IPC socket to reach, so the whole thing is
 // stubbed out rather than retrying a connection that cannot succeed.

@@ -1502,7 +1502,31 @@ int RuntimeMain(int argc, char** argv) {
     }
 }
 
+// SDL must own main() on iOS: it supplies the entry point that starts
+// UIApplicationMain and hands control back here once the app is running.
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#if TARGET_OS_IPHONE
+#include <SDL3/SDL_main.h>
+#endif
+#endif
+
 int main(int argc, char** argv) {
+#if TARGET_OS_IPHONE
+    // SDL's iOS backend calls SDL_main from scene:willConnectToSession:, once
+    // for every scene that connects (SDL_uikitappdelegate.m, postFinishLaunch).
+    // Attaching an external display makes iOS create a second scene, so this
+    // runs again while the first call is still inside the game loop, pumping
+    // events. Re-entering would boot the guest a second time in a live process:
+    // the observed result was data sections reloaded, 0 static constructors on
+    // the second pass, and aurora dying on "Only one window allowed per
+    // display". Declaring UIApplicationSupportsMultipleScenes=false does not
+    // prevent the extra scene, so refuse the re-entry here instead.
+    static std::atomic_flag alreadyRunning = ATOMIC_FLAG_INIT;
+    if (alreadyRunning.test_and_set(std::memory_order_acq_rel)) {
+        return 0;
+    }
+#endif
     return RuntimeMain(argc, argv);
 }
 extern "C" bool g_dynamicAspectRatioEnabled = false;

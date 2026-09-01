@@ -231,6 +231,20 @@ function(mkw_configure_product target)
             $<TARGET_FILE:sqlite3> $<TARGET_FILE_DIR:${target}>)
     endif()
 
+    if(MKW_PLATFORM_IOS)
+        # CMake bundles iOS targets with its own default Info.plist, whose
+        # CFBundleIdentifier is empty and which carries none of the iOS keys, so
+        # iOS refuses to install the result. Supply a real one.
+        set_target_properties(${target} PROPERTIES
+            MACOSX_BUNDLE TRUE
+            MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_LIST_DIR}/ios/Info.plist.in"
+            MACOSX_BUNDLE_EXECUTABLE_NAME "${target}"
+            MACOSX_BUNDLE_BUNDLE_NAME "${target}"
+            MACOSX_BUNDLE_GUI_IDENTIFIER "${MKW_IOS_BUNDLE_ID_PREFIX}.wiicompiled"
+            MACOSX_BUNDLE_BUNDLE_VERSION "1"
+            MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0")
+    endif()
+
     if(MKW_PLATFORM_WINDOWS)
         target_link_libraries(${target} PRIVATE
             dbghelp user32 winmm ws2_32 iphlpapi secur32 crypt32 windowsapp)
@@ -279,8 +293,12 @@ function(mkw_configure_product target)
     if(NOT EXISTS "${MKW_TOUCH_ASSET_DIR}/a.png")
         message(FATAL_ERROR "Missing touch control artwork: ${MKW_TOUCH_ASSET_DIR}")
     endif()
-    add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${MKW_TOUCH_ASSET_DIR}" "$<TARGET_FILE_DIR:${target}>/touch")
+    # Cleared first: copy_directory merges, so a removed icon would otherwise
+    # linger in the bundle and get shipped.
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "$<TARGET_FILE_DIR:${target}>/touch"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${MKW_TOUCH_ASSET_DIR}" "$<TARGET_FILE_DIR:${target}>/touch")
 
     set(MKW_DSP_COEFFICIENT_ROM "${MKW_RUNTIME_SOURCE_DIR}/assets/dsp/dsp_coef.bin")
     if(NOT EXISTS "${MKW_DSP_COEFFICIENT_ROM}")
@@ -305,6 +323,25 @@ function(mkw_configure_product target)
     add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${MKW_INITIAL_PIPELINE_CACHE}"
         "$<TARGET_FILE_DIR:${target}>/initial_pipeline_cache.db")
+
+    if(MKW_PLATFORM_IOS)
+        # An .ipa is a zip with the bundle under Payload/. Left unsigned: the
+        # sideloaders people actually install with (AltStore, SideStore) sign on
+        # the device with the user's own Apple ID, and a signature applied here
+        # would only be replaced. WiiCompiled.entitlements beside this file names
+        # the one entitlement the runtime needs, for whatever does the signing.
+        add_custom_command(TARGET ${target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E rm -rf "$<TARGET_FILE_DIR:${target}>/../ipa"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${target}>/../ipa/Payload"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "$<TARGET_BUNDLE_DIR:${target}>"
+                "$<TARGET_FILE_DIR:${target}>/../ipa/Payload/${target}.app"
+            COMMAND ${CMAKE_COMMAND} -E chdir "$<TARGET_FILE_DIR:${target}>/../ipa"
+                ${CMAKE_COMMAND} -E tar cf "${CMAKE_BINARY_DIR}/${target}-unsigned.ipa" --format=zip Payload
+            COMMAND ${CMAKE_COMMAND} -E rm -rf "$<TARGET_FILE_DIR:${target}>/../ipa"
+            COMMENT "Packaging ${target}-unsigned.ipa")
+    endif()
+
 endfunction()
 
 add_executable(WiiCompiled "${MKW_BASE_PRODUCT_SOURCE}" ${MKW_BASE_REGISTRATION_SOURCES})

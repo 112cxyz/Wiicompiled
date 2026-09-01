@@ -107,6 +107,28 @@ cmake -S runtime -B build-ios -G Ninja -DCMAKE_BUILD_TYPE=Release \
 cmake --build build-ios --target WiiCompiled
 ```
 
+#### iOS from Linux
+
+The same .ipa builds on a Linux host with upstream clang and lld; no Theos or xtool. Tested
+on Debian 13 with the packages `clang-19 lld-19 llvm-19 cmake ninja-build`. Two things have to
+come from a Mac with Xcode, once:
+
+1. The iPhoneOS SDK: `tar -chf - -C "$(dirname "$(xcrun --sdk iphoneos --show-sdk-path)")" iPhoneOS.sdk`,
+   unpacked to `/opt/iPhoneOS.sdk`.
+2. `libclang_rt.ios.a` from `Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/*/lib/darwin/`,
+   placed at `/opt/ios-linux/lib/libclang_rt.ios.a`.
+
+Both paths are overridable (`IOS_SDK`, `MKW_IOS_CLANG_RT`, `MKW_IOS_LLVM_BIN`). The translated
+shard manifest under `generated/` records absolute paths from the machine that ran the translator,
+so either translate on the Linux host or symlink that path to your checkout.
+
+```sh
+cmake -S runtime -B build-ios -G Ninja -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_TOOLCHAIN_FILE=cmake/ios-linux-toolchain.cmake \
+    -DCMAKE_DISABLE_FIND_PACKAGE_absl=TRUE -DAURORA_DAWN_PROVIDER=package
+cmake --build build-ios --target WiiCompiled
+```
+
 Install it with AltStore or SideStore, which sign with your own Apple ID. The app needs the
 `com.apple.developer.kernel.increased-memory-limit` entitlement or it exits at startup;
 [GetMoreRam](https://github.com/hugeBlack/GetMoreRam) grants it with a free Apple ID.

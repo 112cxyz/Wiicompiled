@@ -77,8 +77,13 @@ add_library(mkw_runtime_common OBJECT ${SOURCES})
 mkw_configure_object_target(mkw_runtime_common)
 target_compile_features(mkw_runtime_common PRIVATE cxx_std_20)
 target_compile_definitions(mkw_runtime_common PRIVATE
-    SDL_MAIN_HANDLED
     _DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION)
+if(NOT MKW_PLATFORM_IOS)
+    # iOS is the one target where SDL must own main(): its entry point is what
+    # drives UIApplicationMain. Defining this makes <SDL3/SDL_main.h> a no-op,
+    # so the app links a bare main() that UIKit never calls.
+    target_compile_definitions(mkw_runtime_common PRIVATE SDL_MAIN_HANDLED)
+endif()
 target_link_libraries(mkw_runtime_common PRIVATE
     aurora::gx aurora::pad aurora::si aurora::vi aurora::mtx)
 target_link_libraries(mkw_runtime_common PRIVATE mkw_platform mkw::pugixml mkw::toml11 mkw::cryptopp)
@@ -192,7 +197,10 @@ function(mkw_configure_product target)
         "${MKW_RUNTIME_SOURCE_DIR}/.."
         "${MKW_RUNTIME_SOURCE_DIR}/../aurora-main/include")
     target_compile_definitions(${target} PRIVATE
-        SDL_MAIN_HANDLED _DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION TARGET_PC)
+        _DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION TARGET_PC)
+    if(NOT MKW_PLATFORM_IOS)
+        target_compile_definitions(${target} PRIVATE SDL_MAIN_HANDLED)
+    endif()
     target_compile_features(${target} PRIVATE cxx_std_20)
     mkw_apply_common_compile_options(${target})
     # The dispatch-table and registration shards compile inside the product target itself and

@@ -13,6 +13,7 @@
 #endif
 
 #if defined(__APPLE__)
+#include <TargetConditionals.h>
 #include <mach-o/dyld.h>
 #include <pwd.h>
 #endif
@@ -58,6 +59,18 @@ std::filesystem::path ApplicationDataDirectory(std::string_view applicationName)
         const std::filesystem::path directory = std::filesystem::path(rawPath) / applicationName;
         CoTaskMemFree(rawPath);
         return directory;
+    }
+#elif defined(__APPLE__) && TARGET_OS_IPHONE
+    // The whole container is already private to this app, so user state lives
+    // in Documents rather than a name-scoped Application Support subdirectory.
+    // That puts Config.toml beside the game data the user copied in, which is
+    // what makes a relative dvd_root resolve, and UIFileSharingEnabled exposes
+    // the directory in Files.app so the user can manage it.
+    if (const char* home = std::getenv("HOME"); home && *home) {
+        return std::filesystem::path(home) / "Documents";
+    }
+    if (const passwd* user = getpwuid(getuid()); user && user->pw_dir && *user->pw_dir) {
+        return std::filesystem::path(user->pw_dir) / "Documents";
     }
 #elif defined(__APPLE__)
     if (const char* home = std::getenv("HOME"); home && *home) {

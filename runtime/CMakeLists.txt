@@ -322,9 +322,11 @@ if(MKW_PLATFORM_LINUX)
     add_test(NAME mkw_linux_host_context_tests COMMAND mkw_linux_host_context_tests)
 endif()
 
-if(MKW_PLATFORM_MACOS)
+if(MKW_PLATFORM_MACOS AND NOT MKW_PLATFORM_IOS)
     # Exercise the Apple Silicon context ABI and the public host-memory
-    # contracts separately from translated products.
+    # contracts separately from translated products. Host-only: the flat memory
+    # test pulls in guest_flat_memory_macos.cpp, whose <mach/mach_vm.h> does not
+    # exist in the iOS SDK, and none of these can run on a device anyway.
     enable_language(ASM)
     add_executable(mkw_macos_context_abi_tests
         "${CMAKE_CURRENT_LIST_DIR}/tests/macos_context_abi_tests.cpp"
@@ -394,7 +396,7 @@ else()
         target_compile_definitions(mkw_macos_native_compile PRIVATE SDL_MAIN_HANDLED TARGET_PC)
         target_link_libraries(mkw_macos_native_compile PRIVATE
             aurora::gx aurora::pad aurora::si aurora::vi aurora::mtx
-            mkw::pugixml mkw::toml11 mkw::cryptopp)
+            PNG::PNG mkw::pugixml mkw::toml11 mkw::cryptopp)
         set_target_properties(mkw_macos_native_compile PROPERTIES UNITY_BUILD OFF)
     endif()
     add_custom_target(mkw_platform_paths_check DEPENDS mkw_platform)

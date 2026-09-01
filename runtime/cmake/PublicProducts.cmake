@@ -86,6 +86,8 @@ if(NOT MKW_PLATFORM_IOS)
 endif()
 target_link_libraries(mkw_runtime_common PRIVATE
     aurora::gx aurora::pad aurora::si aurora::vi aurora::mtx)
+# The touch overlay decodes its button artwork at startup.
+target_link_libraries(mkw_runtime_common PRIVATE PNG::PNG)
 target_link_libraries(mkw_runtime_common PRIVATE mkw_platform mkw::pugixml mkw::toml11 mkw::cryptopp)
 if(MKW_PLATFORM_WINDOWS)
     target_link_libraries(mkw_runtime_common PRIVATE shell32 windowsapp)
@@ -270,6 +272,15 @@ function(mkw_configure_product target)
     endif()
     add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${MKW_WII_BOOTSTRAP_SOURCE_DIR}" "$<TARGET_FILE_DIR:${target}>/wii_bootstrap")
+
+    # Touch control artwork. Only the touch build reads these, but they are copied
+    # everywhere the other assets are so the bundle layout stays uniform.
+    set(MKW_TOUCH_ASSET_DIR "${MKW_RUNTIME_SOURCE_DIR}/assets/touch")
+    if(NOT EXISTS "${MKW_TOUCH_ASSET_DIR}/a.png")
+        message(FATAL_ERROR "Missing touch control artwork: ${MKW_TOUCH_ASSET_DIR}")
+    endif()
+    add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${MKW_TOUCH_ASSET_DIR}" "$<TARGET_FILE_DIR:${target}>/touch")
 
     set(MKW_DSP_COEFFICIENT_ROM "${MKW_RUNTIME_SOURCE_DIR}/assets/dsp/dsp_coef.bin")
     if(NOT EXISTS "${MKW_DSP_COEFFICIENT_ROM}")

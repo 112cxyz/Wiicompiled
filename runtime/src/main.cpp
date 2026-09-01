@@ -59,6 +59,7 @@
 #include "ppc_runtime.h"
 #include "aurora_events.h"
 #include "discord_presence.h"
+#include "touch_art.h"
 #include "fiber_manager.h"
 #include "hle_stubs.h"
 #include "runtime_config.h"
@@ -1424,6 +1425,10 @@ int RuntimeMain(int argc, char** argv) {
         }
         aurora_set_frame_worker_wait_callback(ServiceGuestTimingDuringAuroraFrameWait);
         GxGuestWrite::InstallAuroraHooks();
+#if defined(__APPLE__) && TARGET_OS_IPHONE
+        // Up front, or the frame the controls appear on pays for every decode.
+        TouchArt::Preload();
+#endif
         UpdateMkwDynamicAspectSurface(auroraInfo.windowSize.native_fb_width,
                                       auroraInfo.windowSize.native_fb_height);
         settings_overlay::InitializeRuntimeSettings();

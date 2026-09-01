@@ -1,4 +1,8 @@
 #include "settings_overlay.h"
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+#include "touch_pad.h"
 #include "audio_backend.h"
 #include "controller_mapping_wizard.h"
 #include "game_graphics_options.h"
@@ -64,6 +68,8 @@ const char* GraphicsApiDisplayName() {
 }
 
 bool g_topBarVisible = false;
+float g_fpsBounds[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+bool g_fpsBoundsValid = false;
 int g_controllerPort = 0;
 float g_resolutionScale = RuntimeConfigFile::ResolutionMultiplier(1.0f);
 int g_audioVolumePercent = static_cast<int>(std::lround(RuntimeConfigFile::AudioVolume(1.0f) * 100.0f));
@@ -650,6 +656,9 @@ void DrawGraphicsSettings() {
 void DrawFpsOverlay() {
     AuroraPresentTiming presentTiming{};
     aurora_get_present_timing(&presentTiming);
+    // Before the early return: a stale rectangle would keep swallowing taps
+    // meant for the menu button, leaving no way into settings.
+    g_fpsBoundsValid = false;
     if (!g_showFps) {
         return;
     }
@@ -667,6 +676,13 @@ void DrawFpsOverlay() {
                                          ImGuiWindowFlags_NoNav |
                                          ImGuiWindowFlags_NoSavedSettings;
     if (ImGui::Begin("FPS Overlay", nullptr, kFlags)) {
+        const ImVec2 wpos = ImGui::GetWindowPos();
+        const ImVec2 wsize = ImGui::GetWindowSize();
+        constexpr float kTouchPad = 14.0f;
+        g_fpsBounds[0] = wpos.x - kTouchPad;  g_fpsBounds[1] = wpos.y - kTouchPad;
+        g_fpsBounds[2] = wpos.x + wsize.x + kTouchPad;
+        g_fpsBounds[3] = wpos.y + wsize.y + kTouchPad;
+        g_fpsBoundsValid = true;
         if (presentTiming.sampleCount == 0) {
             ImGui::TextUnformatted("FPS: --");
         } else {
@@ -889,6 +905,14 @@ void HandleEvents(const AuroraEvent* events) noexcept {
     }
 }
 
+void ToggleTopBar() noexcept { SetTopBarVisible(!g_topBarVisible); }
+bool TopBarVisible() noexcept { return g_topBarVisible; }
+bool FpsOverlayBounds(float* a, float* b, float* c, float* d) noexcept {
+    if (!g_fpsBoundsValid) return false;
+    *a = g_fpsBounds[0]; *b = g_fpsBounds[1]; *c = g_fpsBounds[2]; *d = g_fpsBounds[3];
+    return true;
+}
+
 void Draw() noexcept {
     // Wait for the frame worker's DONE phase: it has replayed the previous frame's ImGui draw lists
     // and started the next ImGui frame, so all overlay callers can now safely issue ImGui commands.
@@ -902,8 +926,13 @@ void Draw() noexcept {
     DrawFpsOverlay();
     DrawTopBar();
     controller_mapping_wizard::Draw();
-    // The wizard captures raw presses; keep them out of the game.
-    PADBlockInput(controller_mapping_wizard::IsActive());
+#if defined(__APPLE__) && TARGET_OS_IPHONE
+    TouchPad::Draw();
+#endif
+    // The wizard captures raw presses; keep them out of the game even when the
+    // top bar is hidden mid-setup. The top bar matters for touch too: while it
+    // is open, taps belong to the bar and must not drive the guest.
+    PADBlockInput(g_topBarVisible || controller_mapping_wizard::IsActive());
     DrawStartupScreen();
 }
 

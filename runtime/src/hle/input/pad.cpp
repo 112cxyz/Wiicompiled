@@ -1,4 +1,10 @@
 #include "hle_stubs.h"
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+#include "touch_pad.h"
+
+#include <array>
 #include "memory.h"
 #include "hle/controller_status_contract.h"
 
@@ -45,6 +51,15 @@ extern "C" uint32_t PAD__Read_HLE(uint32_t statusPtr)
 
     PADStatus statuses[PAD_CHANMAX]{};
     uint32_t rumbleMask = PADRead(statuses);
+
+    // On-screen controls fill in only when no real pad is present on port 0.
+    std::array<PADStatus, PAD_CHANMAX> touchStatuses{};
+#if defined(__APPLE__) && TARGET_OS_IPHONE
+    if (statuses[0].err != PAD_ERR_NONE && !PADIsInputBlocked() &&
+        TouchPad::Read(touchStatuses)) {
+        statuses[0] = touchStatuses[0];
+    }
+#endif
 
     try {
         for (uint32_t i = 0; i < PAD_CHANMAX; ++i) {

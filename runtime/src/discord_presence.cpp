@@ -1,5 +1,23 @@
 #include "discord_presence.h"
 
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+
+#if defined(__APPLE__) && TARGET_OS_IPHONE
+
+// iOS has no Discord client for the IPC socket to reach, so the whole thing is
+// stubbed out rather than retrying a connection that cannot succeed.
+namespace DiscordPresence {
+void Initialize(const std::string&, const std::string&) {}
+void SetClient(const std::string&) {}
+void SetActivity(Activity) {}
+void Reset() {}
+void Shutdown() {}
+} // namespace DiscordPresence
+
+#else
+
 #include "runtime_log.h"
 
 #include <algorithm>
@@ -464,3 +482,5 @@ void Shutdown() {
 }
 
 } // namespace DiscordPresence
+
+#endif

@@ -5,6 +5,9 @@
 // view at kFlatGuestBase has page protections as the interception mechanism (unmapped/MMIO/
 // executable/deferred-read pages are uncommitted or protected), while the HOST view is a plain
 // alias native runtime code (image loading, DVD reads, HLE, GX) writes through unchecked.
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -15,6 +18,17 @@ namespace GuestFlat {
 // of a global.
 inline constexpr uint64_t kGuestSpaceSize = 0x1'0000'0000ull;
 inline constexpr size_t kGuestPageSize = 0x1000;
+#if defined(__APPLE__) && defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
+// No fixed base works on every device: probing an iPhone 17 Pro and an iPad
+// Pro M5 gave disjoint sets of free 4 GiB windows (448 GiB only, versus 12-48
+// GiB), and the extended-virtual-addressing entitlement changes neither. So the
+// base is whatever the kernel hands out at Initialize().
+//
+// Note that memory_access.h routes every flat access to the checked path on
+// Apple, so this has no reader yet. It is groundwork, not a hot path.
+extern uint8_t* g_flatGuestBase;
+#define MKW_FLAT_GUEST_BASE (GuestFlat::g_flatGuestBase)
+#else
 #if defined(__x86_64__)
 // 16 TiB: clear of the Windows ASan shadow (32 TiB) and of the usual image/heap
 // placement.
@@ -40,7 +54,10 @@ inline constexpr uintptr_t kFixedFlatGuestBase = 0x0000'0010'0000'0000ull;
 #error "guest_flat_memory.h has no fixed flat guest base chosen for this architecture"
 #endif
 
+// Fixed base so the emitted access is `[reg + imm64-in-register]` with no load
+// of a global.
 #define MKW_FLAT_GUEST_BASE (reinterpret_cast<uint8_t*>(GuestFlat::kFixedFlatGuestBase))
+#endif
 
 enum class Backing {
     Owned,

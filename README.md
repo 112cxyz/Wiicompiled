@@ -130,6 +130,28 @@ cmake -S runtime -B build-ios -G Ninja -DCMAKE_BUILD_TYPE=Release \
 cmake --build build-ios --target WiiCompiled
 ```
 
+#### iOS from Windows
+
+The same toolchain file works on Windows with [llvm-mingw](https://github.com/mstorsjo/llvm-mingw),
+which is what the Windows build already uses. Three things differ from a Linux host:
+
+- llvm-mingw does not ship `ld64.lld.exe` or `llvm-install-name-tool.exe`; LLVM tools dispatch on
+  their file name, so copy `ld.lld.exe` to `ld64.lld.exe` and `llvm-objcopy.exe` to
+  `llvm-install-name-tool.exe` in its `bin` directory.
+- Git for Windows checks the SDK repo's symlinks out as small text files unless `core.symlinks`
+  is on (Developer Mode). Either enable that before cloning, or replace each placeholder with a
+  copy of its target; `libSystem.tbd` is one of them and the link fails without it.
+- Pass the toolchain file as an absolute path, and `MKW_IOS_LLVM_BIN` as the llvm-mingw `bin`
+  directory with forward slashes.
+
+```powershell
+cmake -S runtime -B build-ios -G Ninja -DCMAKE_BUILD_TYPE=Release `
+    -DCMAKE_TOOLCHAIN_FILE=C:/src/Wiicompiled/runtime/cmake/ios-linux-toolchain.cmake `
+    -DIOS_SDK=C:/iOS-SDKs/iPhoneOS26.5.sdk -DMKW_IOS_LLVM_BIN=C:/llvm-mingw/bin `
+    -DCMAKE_DISABLE_FIND_PACKAGE_absl=TRUE -DAURORA_DAWN_PROVIDER=package
+cmake --build build-ios --target WiiCompiled
+```
+
 Install it with AltStore or SideStore, which sign with your own Apple ID. The app needs the
 `com.apple.developer.kernel.increased-memory-limit` entitlement or it exits at startup;
 [GetMoreRam](https://github.com/hugeBlack/GetMoreRam) grants it with a free Apple ID.

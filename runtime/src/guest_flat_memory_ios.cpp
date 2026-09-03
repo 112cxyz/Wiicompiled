@@ -57,7 +57,8 @@ void Initialize(const std::vector<RegionRequest>& regions) {
     vm_address_t address = 0;
     if (vm_allocate(mach_task_self(), &address, static_cast<vm_size_t>(kGuestSpaceSize),
                     VM_FLAGS_ANYWHERE) != KERN_SUCCESS) {
-        throw std::runtime_error("unable to reserve a 4 GiB iOS guest address space");
+        throw std::runtime_error("unable to reserve a 4 GiB iOS guest address space; a device with\n"
+                                 "less than 4 GB of RAM may need the extended-virtual-addressing entitlement");
     }
     g_base = reinterpret_cast<uint8_t*>(address);
 

@@ -155,8 +155,14 @@ cmake --build build-ios --target WiiCompiled
 Install it with AltStore or SideStore, which sign with your own Apple ID. The app needs the
 `com.apple.developer.kernel.increased-memory-limit` entitlement or it exits at startup;
 [GetMoreRam](https://github.com/hugeBlack/GetMoreRam) grants it with a free Apple ID.
+GetMoreRam grants `com.apple.developer.kernel.extended-virtual-addressing` at the same time, which
+matters on devices with less than 4 GB of RAM: the runtime reserves a 4 GiB guest address space at
+startup and that is right on the limit iOS allows without it. It makes no difference on the 8 GB
+devices this was developed on.
+
 `runtime/cmake/ios/WiiCompiled.entitlements` is a template for signing by hand, with placeholders to
-replace; the sideloaders build their own and ignore it.
+replace; the sideloaders build their own and ignore it. It carries both entitlements, so the
+provisioning profile you sign with needs both capabilities enabled.
 
 Copy `Config.toml` and an extracted `DATA` directory into the app's Documents folder, using Files on
 the device or the Finder with it connected. Keep `dvd_root` relative:
